@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>kinsight — Street League 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body { background: #080b0f; color: #fff; }
+
+    .card { background: #0f1318; border: 1px solid #1e2530; border-radius: 16px; }
+    .card-inner { background: #141920; border: 1px solid #1e2530; border-radius: 12px; }
+
+    .tag-monthly  { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+    .tag-summer   { background: rgba(249,115,22,0.12); color: #f97316; border: 1px solid rgba(249,115,22,0.2); }
+    .tag-yearlong { background: rgba(168,85,247,0.12); color: #a855f7; border: 1px solid rgba(168,85,247,0.2); }
+    .tag-preseason { background: rgba(59,130,246,0.12); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); }
+
+    .status-active   { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .status-upcoming { background: rgba(100,116,139,0.12); color: #94a3b8; }
+    .status-complete { background: rgba(100,116,139,0.08); color: #64748b; }
+
+    .comp-card { cursor: pointer; transition: all 0.2s ease; }
+    .comp-card:hover { border-color: #2d3748; transform: translateY(-1px); }
+
+    .detail-panel { display: none; }
+    .detail-panel.open { display: block; }
+
+    .tab-btn { color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s; padding-bottom: 8px; }
+    .tab-btn.active { color: #fff; border-bottom-color: #22c55e; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .progress-bar { background: #1e2530; border-radius: 99px; height: 6px; }
+    .progress-fill { background: linear-gradient(90deg, #22c55e, #16a34a); border-radius: 99px; height: 6px; transition: width 0.5s ease; }
+
+    .prize-pill { background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); color: #f97316; border-radius: 99px; padding: 4px 12px; font-size: 12px; font-weight: 600; display: inline-block; }
+
+    .bracket-match { background: #141920; border: 1px solid #1e2530; border-radius: 8px; padding: 10px 14px; }
+    .vs-badge { background: #1e2530; color: #64748b; border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+
+    .kw-tier { background: #141920; border: 1px solid #1e2530; border-radius: 10px; }
+    .kw-tier.unlocked { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.04); }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 99px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.25s ease forwards; }
+
+    .kin-logo { font-weight: 900; letter-spacing: -1px; }
+    .kin-logo span { color: #22c55e; }
+
+    .nav-item { color: #64748b; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+    .nav-item:hover, .nav-item.active { color: #fff; background: #141920; }
+
+    .section-header { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #475569; text-transform: uppercase; }
+
+    .mobile-back { display: none; }
+    @media (max-width: 768px) {
+      .mobile-back { display: flex; }
+      .desktop-layout { flex-direction: column; }
+      .sidebar { width: 100% !important; }
+      .detail-col { width: 100% !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 border-b border-gray-800/50 backdrop-blur-md" style="background: rgba(8,11,15,0.9);">
+    <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="kin-logo text-xl">kin<span>sight</span>™</div>
+        <div class="h-4 w-px bg-gray-700"></div>
+        <div class="text-sm text-gray-500 font-medium">Street League 2026</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="text-xs text-gray-600 hidden sm:block" id="current-date"></div>
+        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Nav pills -->
+  <div class="border-b border-gray-800/50 sticky top-14 z-40" style="background: rgba(8,11,15,0.95);">
+    <div class="max-w-6xl mx-auto px-4">
+      <div class="flex gap-1 py-2 overflow-x-auto hide-scroll">
+        <button class="nav-item active whitespace-nowrap" onclick="filterComps('all', this)">All Competitions</button>
+        <button class="nav-item whitespace-nowrap" onclick="filterComps('monthly', this)">Monthly SL26</button>
+        <button class="nav-item whitespace-nowrap" onclick="filterComps('summer', this)">Summer Long</button>
+        <button class="nav-item whitespace-nowrap" onclick="filterComps('yearlong', this)">Year Long</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex gap-6 desktop-layout" id="main-layout">
+
+      <!-- Left: Competition List -->
+      <div class="w-full md:w-80 flex-shrink-0 sidebar" id="comp-list-col">
+
+        <!-- Monthly -->
+        <div class="mb-6 comp-group" data-group="monthly">
+          <div class="section-header mb-3">Monthly — Street League</div>
+          <div class="flex flex-col gap-2" id="monthly-list">
+            <!-- filled by JS -->
+          </div>
+        </div>
+
+        <!-- Summer Long -->
+        <div class="mb-6 comp-group" data-group="summer">
+          <div class="section-header mb-3">Summer Long</div>
+          <div class="flex flex-col gap-2" id="summer-list">
+            <!-- filled by JS -->
+          </div>
+        </div>
+
+        <!-- Year Long -->
+        <div class="mb-6 comp-group" data-group="yearlong">
+          <div class="section-header mb-3">Year Long</div>
+          <div class="flex flex-col gap-2" id="yearlong-list">
+            <!-- filled by JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right: Detail Panel -->
+      <div class="flex-1 detail-col" id="detail-col">
+        <!-- Default state -->
+        <div id="detail-placeholder" class="card p-10 flex flex-col items-center justify-center text-center min-h-64">
+          <div class="text-4xl mb-4">🏆</div>
+          <div class="text-lg font-bold text-white mb-2">Select a competition</div>
+          <div class="text-sm text-gray-500">Tap any competition to see leaderboards, prizes, and rules</div>
+        </div>
+        <!-- Detail content injected here -->
+        <div id="detail-content" class="fade-in" style="display:none;"></div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+// ─────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────
+
+const today = new Date();
+
+const COMPS = [
+  // ── MONTHLY ──
+  {
+    id: 'ignition',
+    name: 'Ignition',
+    emoji: '🔥',
+    group: 'monthly',
+    tag: 'Preseason',
+    tagClass: 'tag-preseason',
+    dates: { start: '2026-04-06', end: '2026-05-03' },
+    subtitle: 'Hit the threshold, earn the prize.',
+    metric: 'KCA Count by Role',
+    format: 'Individual threshold — everyone who qualifies wins.',
+    rules: `Every rep has a weekly KCA target based on their role. Hit the number during that round's window and you earn the prize — no competition, no ranking, just hit it and get it.\n\n• Rookie = first summer with KIN\n• Veteran = returning setter\n• Closer = closer role\n\nKCAs are counted from QuickBase (Status = KCA or Active) using sale date within each round window.`,
+    rounds: [
+      { label: 'Round 1', dates: 'Apr 6–12',  prize: 'Anker 621 MagSafe Battery',   targets: { Rookie: 1, Veteran: 3, Closer: 5 } },
+      { label: 'Round 2', dates: 'Apr 13–19', prize: 'New Polo',                      targets: { Rookie: 1, Veteran: 3, Closer: 5 } },
+      { label: 'Round 3', dates: 'Apr 20–26', prize: 'Knocking Hat',                  targets: { Rookie: 2, Veteran: 4, Closer: 6 } },
+      { label: 'Round 4', dates: 'Apr 27–May 3', prize: 'Short Sleeve Rain Jacket',   targets: { Rookie: 2, Veteran: 4, Closer: 6 } },
+    ],
+    leaderboardNote: 'Live leaderboard coming once Ignition begins (Apr 6).',
+  },
+  {
+    id: 'wars',
+    name: 'Wars',
+    emoji: '⚔️',
+    group: 'monthly',
+    tag: 'Monthly',
+    tagClass: 'tag-monthly',
+    dates: { start: '2026-05-04', end: '2026-05-31' },
+    subtitle: 'Office vs. office — best PRA wins.',
+    metric: 'PRA (KCAs ÷ Active Reps)',
+    format: 'Office competition — highest Per Rep Average each round wins. Minimum 10 KCA required to be eligible.',
+    rules: `PRA = Total Office KCAs ÷ Active Reps in that office during the round.\n\nTo be eligible for the round prize, an office must have at least 10 KCA during that window.\n\nGrand Prize: The office with the most KCA'd kW for the entire month, who also won at least 1 round, wins a group dinner/activity (~$25/active rep).`,
+    rounds: [
+      { label: 'Round 1', dates: 'May 4–10',  prize: 'Custom Socks'    },
+      { label: 'Round 2', dates: 'May 11–17', prize: 'Custom T-Shirt'  },
+      { label: 'Round 3', dates: 'May 18–24', prize: 'Custom Hat'      },
+      { label: 'Round 4', dates: 'May 25–31', prize: 'Custom Hoodie'   },
+    ],
+    grandPrize: 'Group Dinner/Activity (~$25/active rep)',
+    grandPrizeCondition: 'Most KCA\'d kW in May AND won ≥1 round',
+    leaderboardNote: 'Live office PRA leaderboard coming May 4.',
+  },
+  {
+    id: 'the-drop',
+    name: 'The Drop',
+    emoji: '📦',
+    group: 'monthly',
+    tag: 'Monthly',
+    tagClass: 'tag-monthly',
+    dates: { start: '2026-06-01', end: '2026-06-27' },
+    subtitle: 'New prize every day. Will you earn it?',
+    metric: 'Daily points (setters) / Weekly kW (closers)',
+    format: 'Daily prizes Mon–Sat for setters. Weekly prizes for closers. Sundays off.',
+    rules: `SETTERS — Daily Competition:\nA prize drops every morning (Mon–Sat). Most points on the day wins it.\n• 3-Star Appointment = 1 pt\n• Same-day KCA = 3 pts\nTie? The rep who hit the higher-point action first wins.\n\nCLOSERS — Weekly Competition:\nOne prize per week (Mon–Sun). Most KCA'd kW for the week wins. Prize announced each Monday morning. Closer prize = Saturday's prize for that week (subject to change).`,
+    dropCalendar: [
+      { day: 'Mon', date: 'Jun 1',  prize: 'Whoop' },
+      { day: 'Tue', date: 'Jun 2',  prize: 'Ridge Wallet' },
+      { day: 'Wed', date: 'Jun 3',  prize: 'KIN Golfballs' },
+      { day: 'Thu', date: 'Jun 4',  prize: 'Pillowcube' },
+      { day: 'Fri', date: 'Jun 5',  prize: 'Oakley MetaGlasses' },
+      { day: 'Sat', date: 'Jun 6',  prize: 'DJI Nano' },
+      { day: 'Mon', date: 'Jun 9',  prize: 'DJI Mics' },
+      { day: 'Tue', date: 'Jun 10', prize: 'Sonos Speaker' },
+      { day: 'Wed', date: 'Jun 11', prize: 'Sneakers' },
+      { day: 'Thu', date: 'Jun 12', prize: 'Exclusive Hoodie' },
+      { day: 'Fri', date: 'Jun 13', prize: 'Malbon Driver Cover' },
+      { day: 'Sat', date: 'Jun 14', prize: 'Apple Watch' },
+      { day: 'Mon', date: 'Jun 16', prize: 'Knocking Shoes' },
+      { day: 'Tue', date: 'Jun 17', prize: 'Switch 2' },
+      { day: 'Wed', date: 'Jun 18', prize: 'TaylorMade Driver' },
+      { day: 'Thu', date: 'Jun 19', prize: 'Ice Pod' },
+      { day: 'Fri', date: 'Jun 20', prize: 'Exclusive T-Shirt' },
+      { day: 'Sat', date: 'Jun 21', prize: 'ReMarkable Tablet' },
+      { day: 'Mon', date: 'Jun 23', prize: 'Plaud AI Pin' },
+      { day: 'Tue', date: 'Jun 24', prize: 'Anker Charging Station' },
+      { day: 'Wed', date: 'Jun 25', prize: 'Exclusive Skateboard' },
+      { day: 'Thu', date: 'Jun 26', prize: 'Airtags' },
+      { day: 'Fri', date: 'Jun 27', prize: 'Scotty Cameron Putter' },
+      { day: 'Sat', date: 'Jun 28', prize: 'XBOX 1' },
+    ],
+    leaderboardNote: 'Daily leaderboard goes live June 1.',
+  },
+  {
+    id: 'supercrown',
+    name: 'Supercrown',
+    emoji: '👑',
+    group: 'monthly',
+    tag: 'Monthly',
+    tagClass: 'tag-monthly',
+    dates: { start: '2026-06-29', end: '2026-08-02' },
+    subtitle: '1 setter + 1 closer winner every week.',
+    metric: 'KCA\'d kW',
+    format: 'Weekly competition — top setter and top closer by KCA\'d kW wins each round. Grand prize for best of the full month.',
+    rules: `Each week, 1 setter and 1 closer with the most KCA'd kW wins the round prize.\n\nA minimum KCA count is required to win (threshold TBD — will be updated before Supercrown begins).\n\nGrand Prize: Top Setter + Top Closer across the full month (Jun 29–Aug 2) each win a Super 73 eBike (subject to change; minimum threshold also TBD).`,
+    rounds: [
+      { label: 'Round 1', dates: 'Jun 29–Jul 5', prize: 'Exclusive T-Shirt' },
+      { label: 'Round 2', dates: 'Jul 6–12',     prize: 'Exclusive Zip Hoodie' },
+      { label: 'Round 3', dates: 'Jul 13–19',    prize: 'Exclusive Shirt' },
+      { label: 'Round 4', dates: 'Jul 20–26',    prize: 'Exclusive Sweatsuit' },
+      { label: 'Round 5', dates: 'Jul 27–Aug 2', prize: 'Exclusive Windbreaker/Rain Jacket' },
+    ],
+    grandPrize: 'Super 73 eBike (each — setter + closer)',
+    grandPrizeCondition: 'Top kW for full month (Jun 29–Aug 2) — subject to change',
+    leaderboardNote: 'Live leaderboard starts June 29.',
+  },
+  {
+    id: 'the-throne',
+    name: 'The Throne',
+    emoji: '🪑',
+    group: 'monthly',
+    tag: 'Monthly',
+    tagClass: 'tag-monthly',
+    dates: { start: '2026-08-03', end: '2026-08-29' },
+    subtitle: 'March Madness bracket. D4W-seeded.',
+    metric: 'D4W Wins (seeding) + weekly matchup score',
+    format: 'Bracket tournament seeded by D4W wins. Teams compete Mon–Wed and Thu–Sat each week.',
+    rules: `SEEDING: Your D4W win total throughout the summer determines your bracket seed. Most wins = #1 seed. Matchups follow March Madness format: 1 vs 8, 2 vs 7, 3 vs 6, 4 vs 5.\n\nROUND STRUCTURE: Each week has two rounds — Mon–Wed and Thu–Sat. Teams compete using the same metrics as D4W (run throughout the summer).\n\nTIEBREAKER: Most wins → then total points, or total KCA'd kW for the month (TBD).\n\nGRAND PRIZE: Winning team earns a team trip valued at ~$300/active rep.`,
+    grandPrize: 'Team Trip (~$300/active rep)',
+    grandPrizeCondition: 'Tournament winner',
+    leaderboardNote: 'Bracket seeds determined by end of D4W season (Aug 2). Bracket revealed Aug 3.',
+  },
+
+  // ── SUMMER LONG ──
+  {
+    id: 'kwclub',
+    name: 'kWclub',
+    emoji: '⚡',
+    group: 'summer',
+    tag: 'Summer Long',
+    tagClass: 'tag-summer',
+    dates: { start: '2026-04-27', end: '2026-09-12' },
+    subtitle: 'Stack deals. Unlock gear.',
+    metric: 'Cumulative deals (TBD)',
+    format: 'Tiered milestone competition — hit deal thresholds to unlock exclusive gear all summer long.',
+    rules: `Unlock gear as you stack deals throughout the summer. Thresholds are cumulative — you're building toward each tier from April 27 through September 12.\n\nSETTERS: Unlock a new polo at 10, 20, 30 deals (and beyond).\nCLOSERS: Unlock at 20, 40 deals (and beyond).\n\nExact metrics are being finalized — this page will update before kWclub begins.`,
+    tiers: {
+      setter: [10, 20, 30, 40, 50],
+      closer: [20, 40, 60, 80, 100],
+    },
+    leaderboardNote: 'Metrics being finalized. Full details coming before Apr 27.',
+  },
+  {
+    id: 'the-ten',
+    name: 'The Ten',
+    emoji: '🏅',
+    group: 'summer',
+    tag: 'Summer Long',
+    tagClass: 'tag-summer',
+    dates: { start: '2026-04-27', end: '2026-09-12' },
+    subtitle: 'Top 10 reps. All summer. One trip.',
+    metric: 'KCA\'d kW (cumulative)',
+    format: 'Three leaderboards — Top 10 Rookies, Top 10 Setters (overall), Top 10 Closers. Rankings accumulate across the entire summer.',
+    rules: `Three categories. One goal: be in the top 10 by September 12.\n\nTOP 10 ROOKIES: Rookies only (first summer with KIN). Ranked by cumulative KCA'd kW.\n\nTOP 10 SETTERS: All setters. Ranked by cumulative KCA'd kW.\n\nTOP 10 CLOSERS: All closers. Ranked by cumulative KCA'd kW. (May be Top 5 — TBD.)\n\nPRIZE: Winners in each category earn a trip.`,
+    leaderboardNote: 'Live leaderboard starts April 27.',
+  },
+  {
+    id: 'd4w',
+    name: 'D4W',
+    emoji: '🍽️',
+    group: 'summer',
+    tag: 'Summer Long',
+    tagClass: 'tag-summer',
+    dates: { start: '2026-04-27', end: '2026-08-30' },
+    subtitle: 'Dinners for Winners. 18 weeks of office wars.',
+    metric: 'Rw/KCA, S/KCA%, KCA, PRA, kW',
+    format: 'Weekly office head-to-head matchups. 5 metrics, 5 points. 18 rounds across the summer.',
+    rules: `D4W is KIN's weekly office competition. Each week, offices go head-to-head in 4 matchups (9 offices, 1 bye per week). 5 points available per matchup — one per metric.\n\n5 METRICS:\n1. Rw/KCA — Rookies with a KCA this week\n2. S/KCA% — Sit-to-KCA conversion %\n3. KCA — Total KCA count\n4. PRA — KCAs ÷ active reps\n5. kW — Total KCA'd kilowatts\n\nD4W win totals seed The Throne bracket in August. Most wins = #1 seed.`,
+    d4wLink: true,
+    leaderboardNote: 'See the full D4W site for live matchups and standings.',
+  },
+
+  // ── YEAR LONG ──
+  {
+    id: 'blood-club',
+    name: 'The Blood Club',
+    emoji: '🩸',
+    group: 'yearlong',
+    tag: 'Year Long',
+    tagClass: 'tag-yearlong',
+    dates: { start: '2026-01-01', end: '2026-12-31' },
+    subtitle: '2 same-day closes on a Saturday. Earn your blood.',
+    metric: 'Same-day Saturday closes',
+    format: 'Status earned by achieving same-day closes on a Saturday. Three prize tiers — earn them in order.',
+    rules: `QUALIFICATION: A rep earns a Blood Club entry by getting 2 same-day closes on a single Saturday. Rookies only need 1.\n\nSAME-DAY RULE: Both the appointment SET and the deal CLOSED must happen on the same Saturday. Closes from other days do not count, even if submitted later.\n\nPRIZE TIERS (earned in order):\n1st Entry → Blood Polo\n2nd Entry → Blood Hat\n3rd Entry → Blood ¼ Zip Jacket\n\nThis is a year-long competition — Saturdays all year count.`,
+    bloodTiers: [
+      { label: '1st Entry', prize: 'Blood Polo' },
+      { label: '2nd Entry', prize: 'Blood Hat' },
+      { label: '3rd Entry', prize: 'Blood ¼ Zip Jacket' },
+    ],
+    leaderboardNote: 'Blood Club member roster tracked throughout the year.',
+  },
+];
+
+// ─────────────────────────────────────────────
+// STATUS HELPERS
+// ─────────────────────────────────────────────
+
+function getStatus(comp) {
+  const now = today;
+  const start = new Date(comp.dates.start);
+  const end = new Date(comp.dates.end);
+  if (now >= start && now <= end) return 'active';
+  if (now < start) return 'upcoming';
+  return 'complete';
+}
+
+function statusLabel(s) {
+  if (s === 'active')   return '<span class="status-active   text-xs font-semibold px-2 py-0.5 rounded-full">LIVE</span>';
+  if (s === 'upcoming') return '<span class="status-upcoming text-xs font-semibold px-2 py-0.5 rounded-full">UPCOMING</span>';
+  return                       '<span class="status-complete text-xs font-semibold px-2 py-0.5 rounded-full">DONE</span>';
+}
+
+function daysUntil(dateStr) {
+  const d = new Date(dateStr);
+  const diff = Math.ceil((d - today) / 86400000);
+  if (diff > 0) return `Starts in ${diff}d`;
+  return null;
+}
+
+function daysLeft(dateStr) {
+  const d = new Date(dateStr);
+  const diff = Math.ceil((d - today) / 86400000);
+  if (diff > 0) return `${diff}d left`;
+  return null;
+}
+
+function formatDateRange(start, end) {
+  const s = new Date(start);
+  const e = new Date(end);
+  const opts = { month: 'short', day: 'numeric' };
+  return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER COMP CARD (sidebar)
+// ─────────────────────────────────────────────
+
+function renderCompCard(comp) {
+  const status = getStatus(comp);
+  let sub = '';
+  if (status === 'upcoming') sub = daysUntil(comp.dates.start) || '';
+  else if (status === 'active') sub = daysLeft(comp.dates.end) || '';
+  else sub = 'Season complete';
+
+  return `
+    <div class="card comp-card p-4" onclick="showDetail('${comp.id}')" id="card-${comp.id}">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <div class="text-2xl">${comp.emoji}</div>
+          <div>
+            <div class="font-bold text-white text-sm">${comp.name}</div>
+            <div class="text-xs text-gray-500 mt-0.5">${formatDateRange(comp.dates.start, comp.dates.end)}</div>
+          </div>
+        </div>
+        ${statusLabel(status)}
+      </div>
+      <div class="flex items-center justify-between mt-3">
+        <span class="${comp.tagClass} text-xs font-semibold px-2 py-0.5 rounded-full">${comp.tag}</span>
+        <span class="text-xs text-gray-600">${sub}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────
+// RENDER DETAIL PANEL
+// ─────────────────────────────────────────────
+
+function renderDetail(comp) {
+  const status = getStatus(comp);
+  let html = `
+    <div class="card p-6 mb-4">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div class="flex items-center gap-4">
+          <div class="text-4xl">${comp.emoji}</div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="text-2xl font-black text-white">${comp.name}</h2>
+              ${statusLabel(status)}
+            </div>
+            <div class="text-gray-400 text-sm mt-1">${comp.subtitle}</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+        <div class="flex items-center gap-1.5"><span class="text-gray-600">📅</span> ${formatDateRange(comp.dates.start, comp.dates.end)}</div>
+        <div class="flex items-center gap-1.5"><span class="text-gray-600">📊</span> ${comp.metric}</div>
+        <div class="flex items-center gap-1.5"><span class="${comp.tagClass} px-2 py-0.5 rounded-full font-semibold">${comp.tag}</span></div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-4 flex gap-6 border-b border-gray-800 px-1">
+      <button class="tab-btn active" onclick="switchTab(this, 'overview-${comp.id}')">Overview</button>
+      <button class="tab-btn" onclick="switchTab(this, 'prizes-${comp.id}')">Prizes</button>
+      <button class="tab-btn" onclick="switchTab(this, 'standings-${comp.id}')">Standings</button>
+      <button class="tab-btn" onclick="switchTab(this, 'rules-${comp.id}')">Rules</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview-${comp.id}" class="tab-content active fade-in">
+  `;
+
+  // ── Ignition overview
+  if (comp.id === 'ignition') {
+    html += `
+      <p class="text-sm text-gray-400 mb-4">${comp.format}</p>
+      <div class="section-header mb-3">Rounds</div>
+      <div class="flex flex-col gap-3">
+    `;
+    comp.rounds.forEach(r => {
+      html += `
+        <div class="card-inner p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-bold text-white text-sm">${r.label} <span class="text-gray-500 font-normal">· ${r.dates}</span></div>
+            <span class="prize-pill">${r.prize}</span>
+          </div>
+          <div class="flex gap-4">
+            ${Object.entries(r.targets).map(([role, n]) => `
+              <div class="flex-1 text-center">
+                <div class="text-2xl font-black text-white">${n}</div>
+                <div class="text-xs text-gray-500 mt-0.5">${role}</div>
+                <div class="text-xs text-gray-600">KCA</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // ── Wars overview
+  else if (comp.id === 'wars') {
+    html += `
+      <p class="text-sm text-gray-400 mb-4">${comp.format}</p>
+      <div class="section-header mb-3">Rounds</div>
+      <div class="flex flex-col gap-2 mb-5">
+    `;
+    comp.rounds.forEach(r => {
+      html += `
+        <div class="card-inner p-4 flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-white text-sm">${r.label}</div>
+            <div class="text-xs text-gray-500">${r.dates}</div>
+          </div>
+          <span class="prize-pill">${r.prize}</span>
+        </div>
+      `;
+    });
+    html += `</div>
+      <div class="card-inner p-4 border-orange-500/20" style="border-color: rgba(249,115,22,0.2);">
+        <div class="text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">🏆 Grand Prize</div>
+        <div class="font-bold text-white mb-1">${comp.grandPrize}</div>
+        <div class="text-xs text-gray-500">${comp.grandPrizeCondition}</div>
+      </div>
+    `;
+  }
+
+  // ── The Drop overview
+  else if (comp.id === 'the-drop') {
+    html += `
+      <p class="text-sm text-gray-400 mb-4">${comp.format}</p>
+      <div class="grid grid-cols-2 gap-3 mb-5">
+        <div class="card-inner p-4">
+          <div class="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Setter Scoring</div>
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between"><span class="text-sm text-gray-300">3-Star Appt</span><span class="font-bold text-white">1 pt</span></div>
+            <div class="flex items-center justify-between"><span class="text-sm text-gray-300">Same-day KCA</span><span class="font-bold text-green-400">3 pts</span></div>
+          </div>
+          <div class="text-xs text-gray-600 mt-3">Most points daily wins</div>
+        </div>
+        <div class="card-inner p-4">
+          <div class="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wider">Closer</div>
+          <div class="text-sm text-gray-300 mb-1">Most KCA'd kW</div>
+          <div class="text-xs text-gray-500">Weekly (Mon–Sun)</div>
+          <div class="text-xs text-gray-600 mt-3">1 winner/week</div>
+        </div>
+      </div>
+      <div class="section-header mb-3">Prize Calendar <span class="text-gray-600 font-normal normal-case tracking-normal">(subject to change)</span></div>
+      <div class="flex flex-col gap-1.5">
+    `;
+    comp.dropCalendar.forEach(item => {
+      const isSat = item.day === 'Sat';
+      html += `
+        <div class="card-inner p-3 flex items-center justify-between ${isSat ? 'border-purple-500/20' : ''}">
+          <div class="flex items-center gap-3">
+            <div class="w-10 text-center">
+              <div class="text-xs font-bold ${isSat ? 'text-purple-400' : 'text-gray-400'}">${item.day}</div>
+              <div class="text-xs text-gray-600">${item.date}</div>
+            </div>
+            <div class="text-sm text-white font-medium">${item.prize}</div>
+          </div>
+          ${isSat ? '<span class="text-xs text-purple-400 font-semibold">Closer</span>' : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // ── Supercrown overview
+  else if (comp.id === 'supercrown') {
+    html += `
+      <p class="text-sm text-gray-400 mb-4">${comp.format}</p>
+      <div class="section-header mb-3">Rounds</div>
+      <div class="flex flex-col gap-2 mb-5">
+    `;
+    comp.rounds.forEach(r => {
+      html += `
+        <div class="card-inner p-4 flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-white text-sm">${r.label}</div>
+            <div class="text-xs text-gray-500">${r.dates}</div>
+          </div>
+          <div class="text-right">
+            <span class="prize-pill">${r.prize}</span>
+            <div class="text-xs text-gray-600 mt-1">1 setter + 1 closer</div>
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>
+      <div class="card-inner p-4" style="border-color: rgba(249,115,22,0.2);">
+        <div class="text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">🏆 Grand Prize</div>
+        <div class="font-bold text-white mb-1">${comp.grandPrize}</div>
+        <div class="text-xs text-gray-500">${comp.grandPrizeCondition}</div>
+      </div>
+    `;
+  }
+
+  // ── The Throne overview
+  else if (comp.id === 'the-throne') {
+    html += `
+      <p class="text-sm text-gray-400 mb-4">${comp.format}</p>
+      <div class="card-inner p-4 mb-4">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">Bracket Seeding (D4W Wins)</div>
+        <div class="grid grid-cols-2 gap-2">
+          ${[1,2,3,4,5,6,7,8].map(n => `
+            <div class="bracket-match flex items-center justify-between">
+              <span class="text-sm font-bold text-gray-300">#${n}</span>
+              <span class="vs-badge">vs</span>
+              <span class="text-sm font-bold text-gray-300">#${9-n}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="text-xs text-gray-600 mt-3">Seeding determined by D4W wins (Apr 27–Aug 2)</div>
+      </div>
+      <div class="card-inner p-4 mb-4">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Round Structure</div>
+        <div class="flex gap-3">
+          <div class="flex-1 text-center p-3 rounded-lg" style="background:#0f1318;">
+            <div class="font-bold text-white">Mon–Wed</div>
+            <div class="text-xs text-gray-500 mt-1">Round 1 each week</div>
+          </div>
+          <div class="flex-1 text-center p-3 rounded-lg" style="background:#0f1318;">
+            <div class="font-bold text-white">Thu–Sat</div>
+            <div class="text-xs text-gray-500 mt-1">Round 2 each week</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-inner p-4" style="border-color: rgba(249,115,22,0.2);">
+        <div class="text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">🏆 Grand Prize</div>
+        <div class="font-bold text-white mb-1">${comp.grandPrize}</div>
+        <div class="text-xs text-gray-500">${comp.grandPrizeCondition}</div>
+      </div>
+    `;
+  }
+
+  // ── kWclub overview
+  else if (comp.id === 'kwclub') {
+    html += `
+      <p class="text-sm text-gray-400 mb-5">${comp.format}</p>
+      <div class="section-header mb-3">Setter Tiers</div>
+      <div class="flex flex-col gap-2 mb-5">
+        ${comp.tiers.setter.map((n, i) => `
+          <div class="kw-tier p-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="text-lg">${['🟢','🔵','🟣','🟠','🔴'][i]}</div>
+              <div>
+                <div class="font-semibold text-white text-sm">${n} Deals</div>
+                <div class="text-xs text-gray-500">Setter milestone</div>
+              </div>
+            </div>
+            <span class="prize-pill">Polo Unlock</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="section-header mb-3">Closer Tiers</div>
+      <div class="flex flex-col gap-2">
+        ${comp.tiers.closer.map((n, i) => `
+          <div class="kw-tier p-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="text-lg">${['🟢','🔵','🟣','🟠','🔴'][i]}</div>
+              <div>
+                <div class="font-semibold text-white text-sm">${n} Deals</div>
+                <div class="text-xs text-gray-500">Closer milestone</div>
+              </div>
+            </div>
+            <span class="prize-pill">Polo Unlock</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="mt-4 card-inner p-3 text-xs text-yellow-400/70" style="border-color: rgba(234,179,8,0.2);">
+        ⚠️ Exact metrics being finalized — details will update before Apr 27
+      </div>
+    `;
+  }
+
+  // ── The Ten overview
+  else if (comp.id === 'the-ten') {
+    html += `
+      <p class="text-sm text-gray-400 mb-5">${comp.format}</p>
+      <div class="flex flex-col gap-3">
+        ${[
+          { label: 'Top 10 Rookies', icon: '🌱', desc: 'First summer with KIN. Ranked by KCA\'d kW.' },
+          { label: 'Top 10 Setters', icon: '🚪', desc: 'All setters. Ranked by KCA\'d kW.' },
+          { label: 'Top 10 Closers', icon: '✍️', desc: 'All closers. Ranked by KCA\'d kW. (May be Top 5 — TBD.)' },
+        ].map(cat => `
+          <div class="card-inner p-4">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="text-2xl">${cat.icon}</div>
+              <div class="font-bold text-white">${cat.label}</div>
+            </div>
+            <div class="text-sm text-gray-400">${cat.desc}</div>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="prize-pill">Trip Prize</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // ── D4W overview
+  else if (comp.id === 'd4w') {
+    html += `
+      <p class="text-sm text-gray-400 mb-4">${comp.format}</p>
+      <div class="card-inner p-4 mb-4">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">The 5 Metrics</div>
+        <div class="flex flex-col gap-2">
+          ${[
+            { label: 'Rw/KCA', desc: 'Rookies with a KCA this week' },
+            { label: 'S/KCA%', desc: 'Sit-to-KCA conversion %' },
+            { label: 'KCA',    desc: 'Total KCA count' },
+            { label: 'PRA',    desc: 'KCAs ÷ active reps' },
+            { label: 'kW',     desc: 'Total KCA\'d kilowatts' },
+          ].map((m, i) => `
+            <div class="flex items-center gap-3 p-2 rounded-lg" style="background:#0f1318;">
+              <div class="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center text-xs font-bold text-green-400">${i+1}</div>
+              <div class="font-semibold text-white text-sm w-16">${m.label}</div>
+              <div class="text-xs text-gray-500">${m.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="card-inner p-4 mb-4 border-green-500/20">
+        <div class="text-xs text-green-400 font-semibold uppercase tracking-wider mb-1">🔗 Seeds The Throne</div>
+        <div class="text-sm text-gray-300">D4W win totals determine your Throne bracket seed. Most wins = #1 seed going into August.</div>
+      </div>
+      <a href="#" class="block card-inner p-4 text-center font-bold text-green-400 hover:text-green-300 transition-colors" onclick="alert('D4W site link — coming soon')">
+        View Full D4W Site →
+      </a>
+    `;
+  }
+
+  // ── Blood Club overview
+  else if (comp.id === 'blood-club') {
+    html += `
+      <p class="text-sm text-gray-400 mb-5">${comp.format}</p>
+      <div class="section-header mb-3">Prize Tiers</div>
+      <div class="flex flex-col gap-3 mb-5">
+        ${comp.bloodTiers.map((tier, i) => `
+          <div class="card-inner p-4 flex items-center gap-4">
+            <div class="text-3xl">🩸</div>
+            <div class="flex-1">
+              <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">${tier.label}</div>
+              <div class="font-bold text-white mt-0.5">${tier.prize}</div>
+            </div>
+            <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm" style="background: rgba(239,68,68,0.15); color: #ef4444;">${i+1}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="card-inner p-4 border-red-500/20">
+        <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">The Rule</div>
+        <div class="text-sm text-gray-300 leading-relaxed">2 same-day closes on a single <strong class="text-white">Saturday</strong>.<br>Rookies only need 1.<br><br>Both the appointment SET and deal CLOSED must happen the same Saturday.</div>
+      </div>
+    `;
+  }
+
+  html += `</div>`; // close overview tab
+
+  // ── PRIZES TAB ──
+  html += `<div id="prizes-${comp.id}" class="tab-content fade-in"><div class="card p-6">`;
+  if (comp.rounds) {
+    html += `<div class="section-header mb-4">Round Prizes</div><div class="flex flex-col gap-3">`;
+    comp.rounds.forEach((r, i) => {
+      html += `
+        <div class="flex items-center gap-4 p-3 rounded-xl" style="background:#141920; border: 1px solid #1e2530;">
+          <div class="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center text-xs font-black text-green-400">${i+1}</div>
+          <div class="flex-1">
+            <div class="font-semibold text-white text-sm">${r.label} · ${r.dates}</div>
+          </div>
+          <span class="prize-pill">${r.prize}</span>
+        </div>
+      `;
+    });
+    html += `</div>`;
+    if (comp.grandPrize) {
+      html += `
+        <div class="mt-4 p-4 rounded-xl text-center" style="background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.2);">
+          <div class="text-orange-400 font-black text-lg mb-1">🏆 Grand Prize</div>
+          <div class="text-white font-bold text-xl mb-2">${comp.grandPrize}</div>
+          <div class="text-gray-400 text-sm">${comp.grandPrizeCondition}</div>
+        </div>
+      `;
+    }
+  } else if (comp.bloodTiers) {
+    html += `<div class="flex flex-col gap-3">`;
+    comp.bloodTiers.forEach((t, i) => {
+      html += `
+        <div class="p-4 rounded-xl flex items-center gap-4" style="background:#141920; border: 1px solid rgba(239,68,68,0.2);">
+          <div class="text-3xl">🩸</div>
+          <div><div class="text-xs text-gray-500">${t.label}</div><div class="font-bold text-white">${t.prize}</div></div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  } else if (comp.dropCalendar) {
+    html += `<div class="text-sm text-gray-400 mb-4">22 prizes across the month. Subject to change.</div>`;
+    html += `<div class="flex flex-col gap-1.5">`;
+    comp.dropCalendar.forEach(item => {
+      html += `<div class="flex items-center justify-between p-3 rounded-lg" style="background:#141920; border:1px solid #1e2530;"><div class="text-xs text-gray-500 w-20">${item.day} ${item.date}</div><div class="text-sm text-white font-medium">${item.prize}</div></div>`;
+    });
+    html += `</div>`;
+  } else if (comp.tiers) {
+    html += `<p class="text-sm text-gray-400">Polo unlocks at each tier milestone. Full prize details coming before Apr 27.</p>`;
+  } else {
+    html += `<div class="text-sm text-gray-400 leading-relaxed">Prizes for this competition: <strong class="text-white">Trip</strong> for top 10 finishers in each category.</div>`;
+  }
+  html += `</div></div>`;
+
+  // ── STANDINGS TAB ──
+  html += `
+    <div id="standings-${comp.id}" class="tab-content fade-in">
+      <div class="card p-6 text-center">
+        <div class="text-3xl mb-3">📊</div>
+        <div class="font-bold text-white mb-2">Live Standings</div>
+        <div class="text-sm text-gray-400">${comp.leaderboardNote}</div>
+        ${status === 'active' ? '<div class="mt-4 text-xs text-green-400">🟢 Competition is LIVE — data integration in progress</div>' : ''}
+      </div>
+    </div>
+  `;
+
+  // ── RULES TAB ──
+  html += `
+    <div id="rules-${comp.id}" class="tab-content fade-in">
+      <div class="card p-6">
+        <div class="section-header mb-4">Competition Rules</div>
+        <div class="text-sm text-gray-300 leading-relaxed whitespace-pre-line">${comp.rules}</div>
+      </div>
+    </div>
+  `;
+
+  return html;
+}
+
+// ─────────────────────────────────────────────
+// INTERACTIONS
+// ─────────────────────────────────────────────
+
+let activeCompId = null;
+
+function showDetail(id) {
+  const comp = COMPS.find(c => c.id === id);
+  if (!comp) return;
+
+  // highlight active card
+  document.querySelectorAll('.comp-card').forEach(el => el.style.borderColor = '');
+  const card = document.getElementById('card-' + id);
+  if (card) card.style.borderColor = '#22c55e';
+
+  activeCompId = id;
+
+  const placeholder = document.getElementById('detail-placeholder');
+  const content = document.getElementById('detail-content');
+  if (placeholder) placeholder.style.display = 'none';
+  content.style.display = 'block';
+  content.innerHTML = renderDetail(comp);
+  content.classList.remove('fade-in');
+  void content.offsetWidth;
+  content.classList.add('fade-in');
+
+  // On mobile, scroll to detail
+  if (window.innerWidth < 768) {
+    content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function switchTab(btn, tabId) {
+  const panel = btn.closest('.flex-1, .detail-col, [id="detail-content"]') || document;
+  // deactivate all tabs in this detail panel
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (btn.parentElement.contains(b)) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  // hide all content
+  document.querySelectorAll('.tab-content').forEach(el => {
+    if (el.id.endsWith(tabId.split('-').slice(-1)[0]) || el.id === tabId) {
+      // only show the matching one
+    }
+  });
+  // hide all in this comp
+  const compId = tabId.split('-').slice(1).join('-');
+  document.querySelectorAll(`[id$="-${compId}"].tab-content`).forEach(el => el.classList.remove('active'));
+  const target = document.getElementById(tabId);
+  if (target) {
+    target.classList.add('active');
+    target.classList.remove('fade-in');
+    void target.offsetWidth;
+    target.classList.add('fade-in');
+  }
+}
+
+function filterComps(group, btn) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.querySelectorAll('.comp-group').forEach(g => {
+    if (group === 'all' || g.dataset.group === group) {
+      g.style.display = 'block';
+    } else {
+      g.style.display = 'none';
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+
+function init() {
+  // Date display
+  const el = document.getElementById('current-date');
+  if (el) el.textContent = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Render all comp cards
+  const monthly = COMPS.filter(c => c.group === 'monthly');
+  const summer  = COMPS.filter(c => c.group === 'summer');
+  const year    = COMPS.filter(c => c.group === 'yearlong');
+
+  document.getElementById('monthly-list').innerHTML = monthly.map(renderCompCard).join('');
+  document.getElementById('summer-list').innerHTML  = summer.map(renderCompCard).join('');
+  document.getElementById('yearlong-list').innerHTML = year.map(renderCompCard).join('');
+
+  // Auto-open first active or first upcoming comp
+  const active = COMPS.find(c => getStatus(c) === 'active');
+  const first  = active || COMPS.find(c => getStatus(c) === 'upcoming') || COMPS[0];
+  if (first) showDetail(first.id);
+}
+
+init();
+</script>
+</body>
+</html>
+  
