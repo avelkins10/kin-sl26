@@ -166,7 +166,7 @@ const COMPS = [
     subtitle: 'Hit the threshold, earn the prize.',
     metric: 'KCA Count by Role',
     format: 'Individual threshold — everyone who qualifies wins.',
-    rules: `Every rep has a weekly KCA target based on their role. Hit the number during that round's window and you earn the prize — no competition, no ranking, just hit it and get it.\n\n• Rookie = first summer with KIN\n• Veteran = returning setter\n• Closer = closer role\n\nKCAs are counted from QuickBase (Status = KCA or Active) using sale date within each round window.`,
+    rules: `Ignition is simple: hit your weekly KCA target and you win the prize. That's it. Every rep who qualifies, wins.\n\nEach week is a new round. Each round is independent of each other. Hit the metric each round to unlock the incentive.\n\nYour target is based on your role:\n• Rookie — your first summer with KIN (Rd 1 + Rd 2 = 1 KCA, Rd 3 + Rd 4 = 2 KCA)\n• Veteran Setter — returning setter (Rd 1 + Rd 2 = 3 KCA, Rd 3 + Rd 4 = 4 KCA)\n• Closer — closer role (Rd 1 + Rd 2 = 5 KCA, Rd 3 + Rd 4 = 6 KCA)\n\nTargets increase in Rounds 3 and 4, so start strong.\n\nKCAs are counted using your Sale Date in QuickBase — your deal must reach KCA or Active status within the round window to count. The round window closes at midnight Sunday night.\n\nPrize Distribution\nPrizes ship to your office at the end of each round. Disclaimer*, please allow 2 weeks for prizes to ship. Extenuating circumstances will be communicated.\n\nEligibility\n• Active reps only. You must be an active rep within the round dates.\n• Only deals set and closed (and KCAd) within the round dates will be counted.\n• Cancelled/Deactivated accounts are ineligible.`,
     rounds: [
       { label: 'Round 1', dates: 'Apr 6–12',  prize: 'Anker 621 MagSafe Battery',   targets: { Rookie: 1, Veteran: 3, Closer: 5 } },
       { label: 'Round 2', dates: 'Apr 13–19', prize: 'New Polo',                      targets: { Rookie: 1, Veteran: 3, Closer: 5 } },
@@ -812,7 +812,7 @@ function renderDetail(comp) {
   html += `
     <div id="rules-${comp.id}" class="tab-content fade-in">
       <div class="card p-6">
-        <div class="section-header mb-4">Competition Rules</div>
+        <div class="section-header mb-4">${comp.id === 'ignition' ? 'Ignition Rules' : 'Competition Rules'}</div>
         <div class="text-sm text-gray-300 leading-relaxed whitespace-pre-line">${comp.rules}</div>
       </div>
     </div>
